@@ -1,8 +1,16 @@
+from typing import Annotated
+
 from fastapi.responses import ORJSONResponse
 from icecream import ic
-from fastapi import Response, status, APIRouter
+from fastapi import Response, status, APIRouter, Depends
+from sqlalchemy import select
 from schemas import IncomingBook, ReturnedAllBooks, ReturnedBook
 from configurations.database import get_async_session
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from models.books import Book
+
 
 COUNTER = 0  # каунтер имитирующий присвоение id в базе данных
 
@@ -11,42 +19,42 @@ books_router = APIRouter(
     prefix="/books"
 )
 
-fake_storage = {}
+DBSession = Annotated[AsyncSession, Depends(get_async_session)]
 
 
-@books_router.post("/", response_model=ReturnedBook)
-async def create_book(book: IncomingBook):
-    global COUNTER
-    # TODO запись в БД
-    new_book = {
-        "id": COUNTER,
-        "title": book.title,
-        "author": book.author,
-        "year": book.year,
-        "count_pages": book.count_pages
-        }
-    fake_storage[COUNTER] = new_book
-    COUNTER += 1
-    # return new_book
-    return ORJSONResponse(new_book, status_code=status.HTTP_201_CREATED)
+# Ручка для создания записи о книге в БД. Возвращает созданную книгу.
+@books_router.post("/", response_model=ReturnedBook, status_code=status.HTTP_201_CREATED)  # Прописываем модель ответа
+async def create_book(
+    book: IncomingBook, session: DBSession
+):  # прописываем модель валидирующую входные данные и сессию как зависимость.
+    # это - бизнес логика. Обрабатываем данные, сохраняем, преобразуем и т.д.
+    new_book = Book(
+        title=book.title,
+        author=book.author,
+        year=book.year,
+        count_pages=book.count_pages,
+    )
+    session.add(new_book)
+    await session.flush()
+
+    return new_book
 
 
 @books_router.get("/", response_model=ReturnedAllBooks)
-async def get_all_books():
-    # Хотим видеть:
-    # books: [{"id": 1, "title": "smth", ...}, {"id": 2, ...}]
-    # но не можем из-за нашего Response_model
-    books = [i for i in fake_storage.values()]
+async def get_all_books(session: DBSession):
+    query = select(Book)
+    res = await session.execute(query)
+    books = res.scalars().all()
     return {"books": books}
 
 
 @books_router.get("/{book_id}", response_model=ReturnedBook)
-async def get_book(book_id: int):
+async def get_book(book_id: int, session: DBSession):
     return fake_storage[book_id]
 
 
 @books_router.delete("/{book_id}")
-async def delete_book(book_id: int):
+async def delete_book(book_id: int, session: DBSession):
 
     deleted_book = fake_storage.pop(book_id, -1)
     # print(deleted_book)
@@ -55,7 +63,7 @@ async def delete_book(book_id: int):
 
 
 @books_router.put("/{book_id}")
-async def update_book(book_id: int, book: ReturnedBook):
+async def update_book(book_id: int, book: ReturnedBook, session: DBSession):
     if _ := fake_storage.get(book_id, None):
         fake_storage[book_id] = book
 

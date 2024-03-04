@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from models.base import BaseModel
 
+
 logger = logging.getLogger("__name__")
 
 
@@ -12,7 +13,7 @@ __all__ = ["global_init", "get_async_session", "create_db_and_tables"]
 __async_engine: Optional[AsyncEngine] = None
 __session_factory: Optional[Callable[[], AsyncSession]] = None
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./sql_app.db"
+SQLALCHEMY_DATABASE_URL = "postgresql+asyncpg://postgres:Sanan4ik008@127.0.0.1:5432/mydb"
 
 
 def global_init() -> None:
@@ -47,6 +48,8 @@ async def get_async_session() -> AsyncGenerator:
 
 
 async def create_db_and_tables():
+    from models.books import Book
+
     global __async_engine
 
     if __async_engine is None:

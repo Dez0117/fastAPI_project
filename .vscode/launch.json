@@ -8,8 +8,7 @@
             "module": "uvicorn",
             "args": [
                 "main:app",
-                "--reload",
-                "-Xfrozen_modules=off"
+                "--reload"
             ],
             "jinja": true
         },
@@ -20,8 +19,7 @@
             "module": "uvicorn",
             "args": [
                 "main:app",
-                "--reload",
-                "-Xfrozen_modules=off"
+                "--reload"
             ],
             "jinja": true
         }
